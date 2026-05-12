@@ -69,3 +69,4 @@ ultralytics==8.4.48
 streamlit==1.57.0
 pillow==12.2.0
 numpy==2.4.4
+streamlit-webrtc
