@@ -5,6 +5,10 @@ from ultralytics import YOLO
 from PIL import Image
 from streamlit_webrtc import webrtc_streamer, RTCConfiguration, VideoProcessorBase
 import av
+import logging
+
+# Set up logging to catch hidden errors
+logging.basicConfig(level=logging.WARNING)
 
 # Page Configuration
 st.set_page_config(page_title="PPE Detection System", layout="wide")
@@ -14,7 +18,6 @@ st.write("Real-time PPE Compliance detection using YOLOv11")
 # Load YOLO Model
 @st.cache_resource
 def load_model():
-    # Ensure best.pt is in the same directory as app.py
     return YOLO('best.pt')
 
 model = load_model()
@@ -40,35 +43,47 @@ if source_radio == "Image Upload":
         with col2:
             st.image(cv2.cvtColor(annotated_img, cv2.COLOR_BGR2RGB), caption="Detected Image", use_container_width=True)
 
-# --- Live Webcam Section (using WebRTC for Cloud Support) ---
+# --- Live Webcam Section ---
 elif source_radio == "Live Webcam":
-    st.info("Click 'Start' to enable webcam access. If connection fails, check your network firewall.")
+    st.info("Click 'Start' to enable webcam. If the connection hangs, try a different network or browser.")
     
     class VideoProcessor(VideoProcessorBase):
+        def __init__(self):
+            self.conf = 0.25  # Default confidence
+
         def recv(self, frame):
-            img = frame.to_ndarray(format="bgr24")
+            try:
+                img = frame.to_ndarray(format="bgr24")
 
-            # Perform YOLO Inference
-            results = model.predict(img, conf=conf_threshold, verbose=False)
-            
-            # Draw Bounding Boxes
-            annotated_frame = results[0].plot()
+                # Perform YOLO Inference
+                # We use the threshold from the slider (passed via the processor)
+                results = model.predict(img, conf=self.conf, verbose=False)
+                
+                if results and len(results) > 0:
+                    annotated_frame = results[0].plot()
+                else:
+                    annotated_frame = img
 
-            return av.VideoFrame.from_ndarray(annotated_frame, format="bgr24")
+                return av.VideoFrame.from_ndarray(annotated_frame, format="bgr24")
+            except Exception as e:
+                # Catching errors prevents the 'NoneType' loop crash
+                return frame
 
-    # Enhanced WebRTC Configuration with multiple STUN servers
-    webrtc_streamer(
+    # WebRTC Streamer
+    ctx = webrtc_streamer(
         key="ppe-detection",
         video_processor_factory=VideoProcessor,
         rtc_configuration=RTCConfiguration(
             {"iceServers": [
                 {"urls": ["stun:stun.l.google.com:19302"]},
                 {"urls": ["stun:stun1.l.google.com:19302"]},
-                {"urls": ["stun:stun2.l.google.com:19302"]},
-                {"urls": ["stun:stun3.l.google.com:19302"]},
-                {"urls": ["stun:stun4.l.google.com:19302"]}
+                {"urls": ["stun:stun2.l.google.com:19302"]}
             ]}
         ),
         media_stream_constraints={"video": True, "audio": False},
         async_processing=True,
     )
+
+    # Dynamically update the confidence threshold in the running processor
+    if ctx.video_processor:
+        ctx.video_processor.conf = conf_threshold
