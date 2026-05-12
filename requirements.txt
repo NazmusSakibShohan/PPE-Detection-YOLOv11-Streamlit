@@ -1,10 +1,7 @@
-# Fixed core dependencies for WebRTC compatibility
 tornado==6.3.3
 streamlit==1.57.0
 streamlit-webrtc
 av
-
-# Vision and Deep Learning
 ultralytics==8.4.48
 ultralytics-thop==2.0.19
 opencv-python-headless
@@ -12,8 +9,6 @@ torch==2.11.0
 torchvision==0.26.0
 pillow==12.2.0
 numpy==2.4.4
-
-# Data and Utilities
 pandas==3.0.3
 scipy==1.17.1
 matplotlib==3.10.9
@@ -21,8 +16,6 @@ altair==6.1.0
 PyYAML==6.0.3
 requests==2.34.0
 typing_extensions==4.15.0
-
-# System and Environment
 anyio==4.13.0
 attrs==26.1.0
 blinker==1.9.0
