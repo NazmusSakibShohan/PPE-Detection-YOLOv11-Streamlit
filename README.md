@@ -8,7 +8,10 @@
 This is a real-time Personal Protective Equipment (PPE) detection system developed to enhance safety monitoring in construction sites and industrial environments. The project utilizes the state-of-the-art **YOLOv11** architecture for object detection and a **Streamlit** web interface for easy accessibility.
 
 ---
-
+## 🔗 Live Demo
+  Check out the live application here: [PPE Detection Web App](https://ppe-detection-2026.streamlit.app/)
+  
+---
 ## 🚀 Key Features
 - **Real-time Surveillance:** Detects safety gear via live webcam feed.
 - **Image Processing:** Supports uploading static images (JPG, PNG, JPEG) for detailed compliance checks.
