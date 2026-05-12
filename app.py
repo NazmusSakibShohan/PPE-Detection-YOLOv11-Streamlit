@@ -14,6 +14,7 @@ st.write("Real-time PPE Compliance detection using YOLOv11")
 # Load YOLO Model
 @st.cache_resource
 def load_model():
+    # Ensure best.pt is in the same directory as app.py
     return YOLO('best.pt')
 
 model = load_model()
@@ -41,7 +42,7 @@ if source_radio == "Image Upload":
 
 # --- Live Webcam Section (using WebRTC for Cloud Support) ---
 elif source_radio == "Live Webcam":
-    st.info("Click 'Start' to enable webcam access and allow permissions in your browser.")
+    st.info("Click 'Start' to enable webcam access. If connection fails, check your network firewall.")
     
     class VideoProcessor(VideoProcessorBase):
         def recv(self, frame):
@@ -55,12 +56,18 @@ elif source_radio == "Live Webcam":
 
             return av.VideoFrame.from_ndarray(annotated_frame, format="bgr24")
 
-    # WebRTC Streamer Configuration
+    # Enhanced WebRTC Configuration with multiple STUN servers
     webrtc_streamer(
         key="ppe-detection",
         video_processor_factory=VideoProcessor,
         rtc_configuration=RTCConfiguration(
-            {"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}
+            {"iceServers": [
+                {"urls": ["stun:stun.l.google.com:19302"]},
+                {"urls": ["stun:stun1.l.google.com:19302"]},
+                {"urls": ["stun:stun2.l.google.com:19302"]},
+                {"urls": ["stun:stun3.l.google.com:19302"]},
+                {"urls": ["stun:stun4.l.google.com:19302"]}
+            ]}
         ),
         media_stream_constraints={"video": True, "audio": False},
         async_processing=True,
