@@ -69,17 +69,45 @@ elif source_radio == "Live Webcam":
                 # Catching errors prevents the 'NoneType' loop crash
                 return frame
 
+    # -------------------------------------------------------
+    # FIX: Added free TURN servers from Open Relay Project.
+    # STUN-only fails on mobile networks / carrier-grade NAT.
+    # TURN servers act as a relay when direct P2P is blocked.
+    # -------------------------------------------------------
+    RTC_CONFIG = RTCConfiguration({
+        "iceServers": [
+            # STUN servers (fast, direct path)
+            {"urls": ["stun:stun.l.google.com:19302"]},
+            {"urls": ["stun:stun1.l.google.com:19302"]},
+            # TURN servers — relay fallback for mobile/strict NAT
+            {
+                "urls": ["turn:openrelay.metered.ca:80"],
+                "username": "openrelayproject",
+                "credential": "openrelayproject"
+            },
+            {
+                "urls": ["turn:openrelay.metered.ca:443"],
+                "username": "openrelayproject",
+                "credential": "openrelayproject"
+            },
+            {
+                "urls": ["turn:openrelay.metered.ca:443?transport=tcp"],
+                "username": "openrelayproject",
+                "credential": "openrelayproject"
+            },
+            {
+                "urls": ["turn:openrelay.metered.ca:80?transport=tcp"],
+                "username": "openrelayproject",
+                "credential": "openrelayproject"
+            }
+        ]
+    })
+
     # WebRTC Streamer
     ctx = webrtc_streamer(
         key="ppe-detection",
         video_processor_factory=VideoProcessor,
-        rtc_configuration=RTCConfiguration(
-            {"iceServers": [
-                {"urls": ["stun:stun.l.google.com:19302"]},
-                {"urls": ["stun:stun1.l.google.com:19302"]},
-                {"urls": ["stun:stun2.l.google.com:19302"]}
-            ]}
-        ),
+        rtc_configuration=RTC_CONFIG,
         media_stream_constraints={"video": True, "audio": False},
         async_processing=True,
     )
