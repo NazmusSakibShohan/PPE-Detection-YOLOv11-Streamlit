@@ -6,7 +6,6 @@ from PIL import Image
 from streamlit_webrtc import webrtc_streamer, RTCConfiguration, VideoProcessorBase
 import av
 import logging
-import requests
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -27,37 +26,57 @@ st.sidebar.header("⚙️ Settings")
 conf_threshold = st.sidebar.slider("Confidence Threshold", 0.0, 1.0, 0.25)
 source_radio = st.sidebar.radio("Select Source", ["Image Upload", "Live Webcam"])
 
-# ─── TURN Credentials from Secrets ───────────────────────────────────────────
-# Store in secrets.toml (do not push to git):
+# ─── TURN Config ──────────────────────────────────────────────────────────────
+# Store these in secrets.toml (add to .gitignore):
 #
-# [.streamlit/secrets.toml]
-# METERED_API_KEY = "your-key"
-# METERED_HOST    = "your-id.relay.metered.ca"
+#   TURN_USERNAME   = "b2794eff8ad425615a2f6008"
+#   TURN_CREDENTIAL = "dCjTXzhWE6Br/qhR"
 
-metered_api_key = st.secrets.get("METERED_API_KEY", "")
-metered_host    = st.secrets.get("METERED_HOST", "")
+turn_username   = st.secrets.get("TURN_USERNAME", "")
+turn_credential = st.secrets.get("TURN_CREDENTIAL", "")
 
-# ─── RTC Config Builder ───────────────────────────────────────────────────────
-def build_rtc_config(api_key: str, host: str) -> RTCConfiguration:
+TURN_HOST = "shohan.metered.live"  # Your Metered.ca project host
+
+def build_rtc_config(username: str, credential: str) -> RTCConfiguration:
     ice_servers = [
         {"urls": ["stun:stun.l.google.com:19302"]},
         {"urls": ["stun:stun1.l.google.com:19302"]},
+        {"urls": [f"stun:{TURN_HOST}:80"]},
     ]
 
-    if api_key and host:
-        try:
-            url = f"https://{host}/api/v1/turn/credentials?apiKey={api_key}"
-            resp = requests.get(url, timeout=5)
-            if resp.status_code == 200:
-                ice_servers.extend(resp.json())
-            else:
-                st.sidebar.warning(f"⚠️ TURN API error: {resp.status_code} — check your secrets.")
-        except Exception as e:
-            st.sidebar.warning(f"⚠️ Unable to reach TURN server: {e}")
+    if username and credential:
+        turn_servers = [
+            {
+                "urls": [f"turn:{TURN_HOST}:80"],
+                "username": username,
+                "credential": credential,
+            },
+            {
+                "urls": [f"turn:{TURN_HOST}:443"],
+                "username": username,
+                "credential": credential,
+            },
+            {
+                "urls": [f"turn:{TURN_HOST}:443?transport=tcp"],
+                "username": username,
+                "credential": credential,
+            },
+            {
+                "urls": [f"turn:{TURN_HOST}:80?transport=tcp"],
+                "username": username,
+                "credential": credential,
+            },
+        ]
+        ice_servers.extend(turn_servers)
+        st.sidebar.success("✅ TURN credentials loaded")
     else:
-        st.sidebar.info("ℹ️ TURN credentials not found. Webcam may not work on mobile or cloud networks.")
+        st.sidebar.warning(
+            "⚠️ TURN credentials missing. "
+            "Add TURN_USERNAME and TURN_CREDENTIAL to secrets.toml."
+        )
 
     return RTCConfiguration({"iceServers": ice_servers})
+
 
 # ─── Image Upload ─────────────────────────────────────────────────────────────
 if source_radio == "Image Upload":
@@ -83,8 +102,9 @@ if source_radio == "Image Upload":
 elif source_radio == "Live Webcam":
     st.info(
         "**Before starting the Webcam:**\n"
+        "- Ensure ✅ TURN credentials loaded is visible in the Sidebar.\n"
         "- Grant camera permission in your browser.\n"
-        "- If the spinner persists for more than 15 seconds, check your TURN credentials."
+        "- If the spinner persists for more than 15 seconds, check F12 → Console."
     )
 
     class VideoProcessor(VideoProcessorBase):
@@ -100,7 +120,7 @@ elif source_radio == "Live Webcam":
             except Exception:
                 return frame
 
-    RTC_CONFIG = build_rtc_config(metered_api_key, metered_host)
+    RTC_CONFIG = build_rtc_config(turn_username, turn_credential)
 
     ctx = webrtc_streamer(
         key="ppe-detection",
